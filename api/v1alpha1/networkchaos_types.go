@@ -27,7 +27,6 @@ import (
 // +kubebuilder:printcolumn:name="duration",type=string,JSONPath=`.spec.duration`
 // +chaos-mesh:experiment
 // +genclient
-
 // NetworkChaos is the Schema for the networkchaos API
 type NetworkChaos struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -52,22 +51,16 @@ const (
 	// NetemAction is a combination of several chaos actions i.e. delay, loss, duplicate, corrupt.
 	// When using this action multiple specs are merged into one Netem RPC and sends to chaos daemon.
 	NetemAction NetworkChaosAction = "netem"
-
 	// DelayAction represents the chaos action of adding delay on pods.
 	DelayAction NetworkChaosAction = "delay"
-
 	// LossAction represents the chaos action of losing packets on pods.
 	LossAction NetworkChaosAction = "loss"
-
 	// DuplicateAction represents the chaos action of duplicating packets on pods.
 	DuplicateAction NetworkChaosAction = "duplicate"
-
 	// CorruptAction represents the chaos action of corrupting packets on pods.
 	CorruptAction NetworkChaosAction = "corrupt"
-
 	// PartitionAction represents the chaos action of network partition of pods.
 	PartitionAction NetworkChaosAction = "partition"
-
 	// BandwidthAction represents the chaos action of network bandwidth of pods.
 	BandwidthAction NetworkChaosAction = "bandwidth"
 )
@@ -80,10 +73,8 @@ type Direction string
 const (
 	// To represents network packet from source to target
 	To Direction = "to"
-
 	// From represents network packet to source from target
 	From Direction = "from"
-
 	// Both represents both directions
 	Both Direction = "both"
 )
@@ -93,9 +84,10 @@ type NetworkChaosSpec struct {
 	PodSelector `json:",inline"`
 
 	// Action defines the specific network chaos action.
-	// Supported action: partition, netem, delay, loss, duplicate, corrupt
+	// Supported action: partition, netem, delay, loss, duplicate, corrupt, bandwidth,
+	// cross-region-latency, redis-cluster-failure
 	// Default action: delay
-	// +kubebuilder:validation:Enum=netem;delay;loss;duplicate;corrupt;partition;bandwidth
+	// +kubebuilder:validation:Enum=netem;delay;loss;duplicate;corrupt;partition;bandwidth;cross-region-latency;redis-cluster-failure
 	Action NetworkChaosAction `json:"action"`
 
 	// Device represents the network device to be affected.
@@ -129,11 +121,22 @@ type NetworkChaosSpec struct {
 	// RemoteCluster represents the remote cluster where the chaos will be deployed
 	// +optional
 	RemoteCluster string `json:"remoteCluster,omitempty"`
+
+	// CrossRegionLatency specifies parameters for the cross-region-latency action.
+	// Each profile injects a distinct per-region WAN delay toward the listed CIDRs.
+	// +optional
+	CrossRegionLatency *CrossRegionLatencySpec `json:"crossRegionLatency,omitempty"`
+
+	// RedisClusterFailure specifies parameters for the redis-cluster-failure action.
+	// Failures are applied only to Redis protocol ports (6379 + cluster bus 16379).
+	// +optional
+	RedisClusterFailure *RedisClusterFailureSpec `json:"redisClusterFailure,omitempty"`
 }
 
 // NetworkChaosStatus defines the observed state of NetworkChaos
 type NetworkChaosStatus struct {
 	ChaosStatus `json:",inline"`
+
 	// Instances always specifies podnetworkchaos generation or empty
 	// +optional
 	Instances map[string]int64 `json:"instances,omitempty"`
