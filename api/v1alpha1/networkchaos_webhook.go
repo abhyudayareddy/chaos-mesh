@@ -30,7 +30,6 @@ import (
 const (
 	// DefaultJitter defines default value for jitter
 	DefaultJitter = "0ms"
-
 	// DefaultCorrelation defines default value for correlation
 	DefaultCorrelation = "0"
 )
@@ -55,11 +54,8 @@ func (in *Rate) Validate(root interface{}, path *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	// in cannot be nil
 	_, err := isValidRateUnit(string(*in))
-
 	if err != nil {
-		allErrs = append(allErrs,
-			field.Invalid(path, in,
-				fmt.Sprintf("parse rate field error:%s", err)))
+		allErrs = append(allErrs, field.Invalid(path, in, fmt.Sprintf("parse rate field error:%s", err)))
 	}
 	return allErrs
 }
@@ -67,21 +63,17 @@ func (in *Rate) Validate(root interface{}, path *field.Path) field.ErrorList {
 func isValidRateUnit(nu string) (bool, error) {
 	// normalize input
 	s := strings.ToLower(strings.TrimSpace(nu))
-
 	for _, u := range []string{"kbit", "mbit", "gbit", "tbit", "tbps", "gbps", "mbps", "kbps", "bps", "bit"} {
 		if strings.HasSuffix(s, u) {
 			ts := strings.TrimSuffix(s, u)
 			s := strings.TrimSpace(ts)
-
 			_, err := strconv.ParseUint(s, 10, 64)
 			if err != nil {
 				return false, err
 			}
-
 			return true, nil
 		}
 	}
-
 	return false, errors.New("invalid unit")
 }
 
@@ -93,25 +85,38 @@ func (in *NetworkChaosSpec) Validate(root interface{}, path *field.Path) field.E
 		return nil
 	}
 
-	if (in.Direction == From || in.Direction == Both) &&
-		in.ExternalTargets != nil && in.Action != PartitionAction {
-		allErrs = append(allErrs,
-			field.Invalid(path.Child("direction"), in.Direction,
-				"external targets cannot be used with `from` and `both` direction in netem action yet"))
+	// Validate cross-region-latency action
+	if in.Action == CrossRegionLatencyAction {
+		if in.CrossRegionLatency == nil {
+			allErrs = append(allErrs, field.Required(
+				path.Child("crossRegionLatency"),
+				"crossRegionLatency spec is required for cross-region-latency action",
+			))
+		}
+		return allErrs
 	}
 
+	// Validate redis-cluster-failure action
+	if in.Action == RedisClusterFailureAction {
+		if in.RedisClusterFailure == nil {
+			allErrs = append(allErrs, field.Required(
+				path.Child("redisClusterFailure"),
+				"redisClusterFailure spec is required for redis-cluster-failure action",
+			))
+		}
+		return allErrs
+	}
+
+	if (in.Direction == From || in.Direction == Both) && in.ExternalTargets != nil && in.Action != PartitionAction {
+		allErrs = append(allErrs, field.Invalid(path.Child("direction"), in.Direction, "external targets cannot be used with `from` and `both` direction in netem action yet"))
+	}
 	if (in.Direction == From || in.Direction == Both) && in.Target == nil {
 		if in.Action != PartitionAction {
-			allErrs = append(allErrs,
-				field.Invalid(path.Child("direction"), in.Direction,
-					"`from` and `both` direction cannot be used when targets is empty in netem action"))
+			allErrs = append(allErrs, field.Invalid(path.Child("direction"), in.Direction, "`from` and `both` direction cannot be used when targets is empty in netem action"))
 		} else if in.ExternalTargets == nil {
-			allErrs = append(allErrs,
-				field.Invalid(path.Child("direction"), in.Direction,
-					"`from` and `both` direction cannot be used when targets and external targets are both empty"))
+			allErrs = append(allErrs, field.Invalid(path.Child("direction"), in.Direction, "`from` and `both` direction cannot be used when targets and external targets are both empty"))
 		}
 	}
-
 	// TODO: validate externalTargets are in ip or domain form
 	return allErrs
 }
